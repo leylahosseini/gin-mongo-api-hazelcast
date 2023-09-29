@@ -1,0 +1,114 @@
+version: "3.9"
+
+services:
+#  api:
+#    build:
+#      dockerfile: ./Dockerfile
+#    image: 
+#    ports:
+#      - 8080:8080
+#      - 8081:8081
+#    environment:
+#      MONGODB.DBHOST: "mongodb:27017"
+#      MONGODB.DBUSER: "admin"
+#      MONGODB.DBPASSWORD: "password"
+#      REDIS.HOST:     "redis:6379"
+#    external_links:
+#      - mongodb
+#      - redis
+#      # Start app
+#    command: reflex -g '*.go' go run main.go --start-service
+  mongoimport:
+    image: mongo
+    container_name: my-import
+    volumes:
+    - ./users.json:/src/data/users.json
+    command: mongoimport --host mongodb --db golangAPI  --collection users --file /src/data/users.json
+
+  mongodb:
+    hostname: mongodb
+    image: mongo
+    container_name: mongodb-1
+    expose:
+      - 27017
+    ports:
+      - 27017:27017
+    depends_on:
+    - mongoimport
+#    environment:
+#      MONGO_INITDB_ROOT_USERNAME: "admin"
+#      MONGO_INITDB_ROOT_PASSWORD: "123456"
+#      MONGO_INITDB_DATABASE: "test-mongo"
+#    replicaset: rs0
+    volumes:
+      - ./mongodb-data:/data/db
+    command: 
+    - /bin/bash
+    - -c 
+    - |
+      mongod --replSet rs0 --bind_ip_all 
+       mongosh --eval "rs.initiate({_id: \"rs0\",members: [{_id: 0, host: \"mongodb\"},{_id: 1, host: \"mongodb2\"}]})" 
+
+
+  mongodb2:
+    hostname: mongodb2
+    image: mongo
+#    restart: always
+    container_name: mongodb-2
+#    replicaset: rs0
+#    environment:
+#      MONGO_INITDB_ROOT_USERNAME: "admin"
+#      MONGO_INITDB_ROOT_PASSWORD: "123456"
+#      MONGO_INITDB_DATABASE: "test-mongo"
+    expose:
+      - 27017
+    ports:
+      - "27018:27017"
+    volumes:
+      - ./mongodb-data-2:/data/db
+    command: mongod --replSet rs0 --bind_ip_all
+    depends_on:
+      - mongodb
+#    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+#  mongo-express:
+#    image: mongo-express
+#    container_name: mongo-express
+#    restart: always
+#    ports:
+#      - "28081:8081"
+#    environment:
+#      ME_CONFIG_MONGODB_SERVER: mongodb
+#      ME_CONFIG_BASICAUTH_USERNAME: admin
+#      ME_CONFIG_BASICAUTH_PASSWORD: changeme
+#      ME_CONFIG_MONGODB_AUTH_DATABASE: admin
+#      ME_CONFIG_MONGODB_ADMINUSERNAME: mongoadmin
+#      ME_CONFIG_MONGODB_ADMINPASSWORD: mongoadmin
+#      ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017/ 
+#    depends_on:
+#      - mongodb
+
+###
+  hazelcast:
+    image: hazelcast/hazelcast:5.3.1
+    ports:
+    - "5701:5701"
+#    volumes:
+#       - ./hazelcast-data:/opt/hazelcast/persistence
+#      - ./hazelcast-data:/opt/hazelcast
+  management-center:
+    image: hazelcast/management-center:5.3.1
+    ports:
+    - "8080:8080"
+    environment:
+    - MC_DEFAULT_CLUSTER=dev
+    - MC_DEFAULT_CLUSTER_MEMBERS=hazelcast
+    - MC_ADMIN_USER=leyla
+    - MC_ADMIN_PASSWORD=qweQWE12@
+#    - MC_METRICS_PERSISTENCE_ENABLED=true
+#    - PATH_TO_PERSISTENT_FOLDER=/data
+    - MIN_HEAP_SIZE='512M'
+    - MAX_HEAP_SIZE='3024M'
+    volumes:
+      - ./mgt-data:/data
+#    mongosh --eval "rs.initiate({_id: \"rs0\",members: [{_id: 0, host: \"mongodb\"},{_id: 1, host: \"mongodb2\"}#]})"
+#
